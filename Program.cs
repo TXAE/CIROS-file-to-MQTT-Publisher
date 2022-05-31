@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using SharpPcap;
 
 static class Program
 {
@@ -19,6 +20,91 @@ static class Program
             p.StartInfo.FileName = CirosPath;
             p.Start();
         }
+
+        var devices = CaptureDeviceList.Instance;
+        if (devices.Count < 1)
+        {
+            Console.WriteLine("No network devices were found on this machine.");
+            return;
+        }
+        using var device = devices[4]; //Ethernet
+        device.Open();
+        device.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
+        device.Filter = "greater 100 and (" +  //help: https://www.tcpdump.org/manpages/pcap-filter.7.html
+            "src host 192.168.0.128 or " +     //RH-6SDH5520
+            "src host 192.168.0.123)";         //RV-3SDB
+        Console.WriteLine("-- Listening on {0} and publishing to MQTT...\n" +
+            "Hit 'Ctrl-C' to exit...", device.Description);
+        device.Capture(); // Start capture 'INFINTE' number of packets
+
+        #region sendPositionsPls
+            byte[] sendPositionsPls = new byte[49];
+        sendPositionsPls[0] = 69;
+        sendPositionsPls[1] = 
+            sendPositionsPls[2] = 
+            sendPositionsPls[7] = 
+            sendPositionsPls[10] =
+            sendPositionsPls[11] =
+            sendPositionsPls[14] =
+            sendPositionsPls[18] =
+            sendPositionsPls[38] =
+            sendPositionsPls[39] = 0;
+        sendPositionsPls[3] = 49;
+        sendPositionsPls[4] = 60;
+        sendPositionsPls[5] = 125;
+        sendPositionsPls[6] = 64;
+        sendPositionsPls[8] = 128;
+        sendPositionsPls[9] = 6;
+        sendPositionsPls[12] = 192;
+        sendPositionsPls[13] = 168;
+        sendPositionsPls[15] = 193;
+        sendPositionsPls[16] = 192;
+        sendPositionsPls[17] = 168;
+        sendPositionsPls[19] = 128;
+        sendPositionsPls[20] = 213;
+        sendPositionsPls[21] = 74;
+        sendPositionsPls[22] = 39;
+        sendPositionsPls[23] = 17;
+        sendPositionsPls[24] = 143;
+        sendPositionsPls[25] = 194;
+        sendPositionsPls[26] = 95;
+        sendPositionsPls[27] = 35;
+        sendPositionsPls[28] = 123;
+        sendPositionsPls[29] = 253;
+        sendPositionsPls[30] = 63;
+        sendPositionsPls[31] = 114;
+        sendPositionsPls[32] = 80;
+        sendPositionsPls[33] = 24;
+        sendPositionsPls[34] = 1;
+        sendPositionsPls[35] = 254;
+        sendPositionsPls[36] = 130;
+        sendPositionsPls[37] = 181;
+        sendPositionsPls[40] = 49;
+        sendPositionsPls[41] = 59;
+        sendPositionsPls[42] = 49;
+        sendPositionsPls[43] = 59;
+        sendPositionsPls[44] = 74;
+        sendPositionsPls[45] = 80;
+        sendPositionsPls[46] = 79;
+        sendPositionsPls[47] = 83;
+        sendPositionsPls[48] = 70;
+        
+
+        //Source: https://github.com/dotpcap/sharppcap/blob/master/Examples/Example9.SendPacket/Example9.SendPacket.cs
+        try
+        {
+            //Send the packet out the network device
+            device.SendPacket(sendPositionsPls);
+            Console.WriteLine("-- Packet sent successfuly.");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("-- " + e.Message);
+        }
+
+        Console.Write("Hit 'Enter' to exit...");
+        Console.ReadLine();
+        #endregion
 
         ProcessStartInfo psi = new ProcessStartInfo();
         psi.FileName = @"C:\Program Files\Wireshark\tshark.exe";
@@ -95,36 +181,83 @@ static class Program
         #endregion
     }//end of static async Task
 
-    private async static void OnChanged(object sender, FileSystemEventArgs e)
+
+    /// <summary>
+    /// Publishes Packet Data to MQTT
+    /// </summary>
+    private static void device_OnPacketArrival(object sender, PacketCapture e)
     {
-        //Console.WriteLine($"\nLogfile changed: {e.FullPath}");
-        FileStream logFileStream = new FileStream(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using StreamReader logFileReader = new StreamReader(logFileStream);
-        while (!logFileReader.EndOfStream)
+        var rawPacket = e.GetPacket();
+        var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
+        PacketDotNet.IPv4Packet IPV4packet = (PacketDotNet.IPv4Packet)packet.PayloadPacket;
+        string Robot = "";
+        if (IPV4packet.SourceAddress.ToString() == "192.168.0.123")
+            Robot = "RV-3SDB";
+        else if (IPV4packet.SourceAddress.ToString() == "192.168.0.128")
+            Robot = "RH-6SDH5520";
+
+        var tcpPacket = packet.Extract<PacketDotNet.TcpPacket>();
+        if (tcpPacket != null)
         {
-            string line = logFileReader.ReadLine();
-            if (line.Contains("QoK"))
+            string Payload = System.Text.Encoding.Default.GetString(tcpPacket.PayloadData);
+            if (Payload.Contains("QoK"))
             {
-                int beginOfData = line.IndexOf("QoK") + "QoK".Length;
-                int endOfData = line.IndexOf(";;");
+                int beginOfData = Payload.IndexOf("QoK") + "QoK".Length;
+                int endOfData = Payload.IndexOf(";;");
+                if (endOfData == -1) endOfData = Payload.Length;
                 int lengthOfData = endOfData - beginOfData;
-                if (beginOfData < 0 || endOfData < 0 || lengthOfData <0) break;
-                string Data = line.Substring(beginOfData, lengthOfData);
+                if (beginOfData < 0 || lengthOfData < 0) return;
+                string Data = Payload.Substring(beginOfData, lengthOfData);
                 string[] data = Data.Split(";", StringSplitOptions.RemoveEmptyEntries);
                 for (int i = 0; i < data.Length - 1; i += 2)
-                    await Publish_Application_Message(data[i], data[i + 1]);
+                    Publish_Application_Message(Robot + "/" + data[i], data[i + 1]);
             }
         }
-
-        // Clean up
-        logFileReader.Close();
-        logFileStream.Close();
-        Console.Beep();
     }
 
-    public static async Task Publish_Application_Message(string topic, string payload)
+
+    private async static void OnChanged(object sender, FileSystemEventArgs e)
+    {
+        //Console.WriteLine($"\nFile changed: {e.FullPath}");
+        try
+        {
+            FileStream logFileStream = new FileStream(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using StreamReader logFileReader = new StreamReader(logFileStream);
+            while (!logFileReader.EndOfStream)
+            {
+                string line = logFileReader.ReadLine();
+                if (line.Contains("QoK"))
+                {
+                    int beginOfData = line.IndexOf("QoK") + "QoK".Length;
+                    int endOfData = line.IndexOf(";;");
+                    int lengthOfData = endOfData - beginOfData;
+                    if (beginOfData < 0 || endOfData < 0 || lengthOfData < 0) break;
+                    string Data = line.Substring(beginOfData, lengthOfData);
+                    string[] data = Data.Split(";", StringSplitOptions.RemoveEmptyEntries);
+                    for (int i = 0; i < data.Length - 1; i += 2)
+                        await Publish_Application_Message(data[i], data[i + 1]);
+                }
+            }
+
+            // Clean up
+            logFileReader.Close();
+            logFileStream.Close();
+            Console.Beep();
+        }
+        catch (FileNotFoundException ex)
+        {
+            Console.WriteLine(ex.Message);
+            Console.WriteLine("No worries, I'll try to use the next file.");
+            Console.WriteLine(ex.StackTrace);
+        }
+        
+    }
+
+    private static async Task Publish_Application_Message(string topic, string payload)
     {
         /*
+         * SOURCE: https://github.com/dotnet/MQTTnet/blob/master/Samples/Client/Client_Publish_Samples.cs
+         * 
          * This sample pushes a simple application message including a topic and a payload.
          *
          * Always use builders where they exist. Builders (in this project) are designed to be
@@ -133,7 +266,7 @@ static class Program
          * or at least provides backward compatibility where possible.
          */
 
-        var mqttFactory = new MQTTnet.MqttFactory();
+        MQTTnet.MqttFactory? mqttFactory = new();
 
         using (var mqttClient = mqttFactory.CreateMqttClient())
         {
@@ -144,7 +277,7 @@ static class Program
             await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
 
             var applicationMessage = new MQTTnet.MqttApplicationMessageBuilder()
-                .WithTopic("DHBW_Mannheim/U06A/Festo_Anlage/MPS_TransferFactory_Montieren/" + topic)
+                .WithTopic("DHBW_Mannheim/Raum_U06A/MPS_TransferFactory_FESTO/Mitsubishi_Robot_" + topic)
                 .WithPayload(payload)
                 .Build();
 
