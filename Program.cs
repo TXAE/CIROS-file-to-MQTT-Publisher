@@ -12,7 +12,9 @@ static class Program
         {
             string CirosPath = @"C:\Program Files\Festo Didactic\CIROS 6.4\CIROS Studio\CIROS Studio FESTO.exe";
             Console.WriteLine("Could not find a running Ciros process on this machine\n" +
-                "Starting " + CirosPath);
+                "Starting " + CirosPath +
+                "\nRemember to start logging in Ciros for MQTT Publisher to work!\n" +
+                "In Ciros => RCI-Explorer => RH-6SDH5520 => Monitore => Position => Bei Online einschalten");
             p = new Process();
             p.StartInfo.FileName = CirosPath;
             p.Start();
