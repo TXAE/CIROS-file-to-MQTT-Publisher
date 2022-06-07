@@ -1,54 +1,52 @@
-﻿using System.Diagnostics;
-using SharpPcap;
+﻿using SharpPcap;
+using System.Diagnostics;
+
 
 static class Program
 {
     //private const string logPath = @"C:\Users\festoadmin\Documents\DHBW_MA_Roboter.modx\ServoVoltage.log";
-    private const string logPath = @"C:\Users\festoadmin\Documents\Wireshark_Logs";
+    //private const string logPath = @"C:\Users\festoadmin\Documents\Wireshark_Logs";
 
-    static async Task Main()
+    static void Main()
     {
-        Process p = Process.GetProcessesByName("CIROS Studio FESTO").FirstOrDefault();
+        Process? p = Process.GetProcessesByName("CIROS Studio FESTO").FirstOrDefault();
         if (p == null)
         {
             string CirosPath = @"C:\Program Files\Festo Didactic\CIROS 6.4\CIROS Studio\CIROS Studio FESTO.exe";
             Console.WriteLine("Could not find a running Ciros process on this machine\n" +
-                "Starting " + CirosPath +
+                "Trying to start Ciros from " + CirosPath +
                 "\nRemember to start logging in Ciros for MQTT Publisher to work!\n" +
-                "In Ciros => RCI-Explorer => RH-6SDH5520 => Monitore => Position => Bei Online einschalten");
+                "In Ciros => RCI-Explorer => RH-6SDH5520 => Monitore => Position => 'EIN' klicken\n");
             p = new Process();
             p.StartInfo.FileName = CirosPath;
             p.Start();
         }
 
-        var devices = CaptureDeviceList.Instance;
-        if (devices.Count < 1)
-        {
-            Console.WriteLine("No network devices were found on this machine.");
-            return;
-        }
-        using var device = devices[4]; //Ethernet
+        using var device = CaptureDeviceList.Instance[4]; //Ethernet
         device.Open();
-        device.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
+        device.OnPacketArrival += new PacketArrivalEventHandler(OnPacketArrival);
         device.Filter = "greater 100 and (" +  //help: https://www.tcpdump.org/manpages/pcap-filter.7.html
             "src host 192.168.0.128 or " +     //RH-6SDH5520
             "src host 192.168.0.123)";         //RV-3SDB
-        Console.WriteLine("-- Listening on {0} and publishing to MQTT...\n" +
+        Console.WriteLine("-- Listening on {0} and publishing to MQTT\n" +
             "Hit 'Ctrl-C' to exit...", device.Description);
         device.Capture(); // Start capture 'INFINTE' number of packets
 
         #region sendPositionsPls
-            byte[] sendPositionsPls = new byte[49];
+        //a first (failed) attempt to ask the robot to send me positions
+        //so far this is done by Ciros, but I would like to request information myself
+        //to exclude the need for Ciros entirely
+        byte[] sendPositionsPls = new byte[49];
         sendPositionsPls[0] = 69;
-        sendPositionsPls[1] = 
-            sendPositionsPls[2] = 
-            sendPositionsPls[7] = 
-            sendPositionsPls[10] =
-            sendPositionsPls[11] =
-            sendPositionsPls[14] =
-            sendPositionsPls[18] =
-            sendPositionsPls[38] =
-            sendPositionsPls[39] = 0;
+        sendPositionsPls[1] =
+        sendPositionsPls[2] =
+        sendPositionsPls[7] =
+        sendPositionsPls[10] =
+        sendPositionsPls[11] =
+        sendPositionsPls[14] =
+        sendPositionsPls[18] =
+        sendPositionsPls[38] =
+        sendPositionsPls[39] = 0;
         sendPositionsPls[3] = 49;
         sendPositionsPls[4] = 60;
         sendPositionsPls[5] = 125;
@@ -88,7 +86,7 @@ static class Program
         sendPositionsPls[46] = 79;
         sendPositionsPls[47] = 83;
         sendPositionsPls[48] = 70;
-        
+
 
         //Source: https://github.com/dotpcap/sharppcap/blob/master/Examples/Example9.SendPacket/Example9.SendPacket.cs
         try
@@ -106,37 +104,39 @@ static class Program
         Console.ReadLine();
         #endregion
 
-        ProcessStartInfo psi = new ProcessStartInfo();
-        psi.FileName = @"C:\Program Files\Wireshark\tshark.exe";
-        psi.Arguments =
-            "--interface Ethernet " +
-            "--ring-buffer packets:2 " +
-            "--ring-buffer files:5 " +
-            "-w C:/Users/festoadmin/Documents/Wireshark_Logs/wireshark.log " +
-            "greater 100 and src 192.168.0.123 or src 192.168.0.128"; 
-            //"-F pcapng -W n ";//will save host name resolution records along with captured packets;
-        psi.UseShellExecute = false;
-        psi.RedirectStandardOutput = true;
-        Process tsharkProcess = Process.Start(psi);
+        #region old method of Processing of Wireshark logs
+        //ProcessStartInfo psi = new ProcessStartInfo();
+        //psi.FileName = @"C:\Program Files\Wireshark\tshark.exe";
+        //psi.Arguments =
+        //    "--interface Ethernet " +
+        //    "--ring-buffer packets:2 " +
+        //    "--ring-buffer files:5 " +
+        //    "-w C:/Users/festoadmin/Documents/Wireshark_Logs/wireshark.log " +
+        //    "greater 100 and src 192.168.0.123 or src 192.168.0.128"; 
+        //    //"-F pcapng -W n ";//will save host name resolution records along with captured packets;
+        //psi.UseShellExecute = false;
+        //psi.RedirectStandardOutput = true;
+        //Process tsharkProcess = Process.Start(psi);
 
-        using var watcher = new FileSystemWatcher(logPath);
+        //using var watcher = new FileSystemWatcher(logPath);
 
-        watcher.NotifyFilter = NotifyFilters.Attributes
-                             | NotifyFilters.CreationTime
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.FileName
-                             | NotifyFilters.LastAccess
-                             | NotifyFilters.LastWrite
-                             | NotifyFilters.Security
-                             | NotifyFilters.Size;
+        //watcher.NotifyFilter = NotifyFilters.Attributes
+        //                     | NotifyFilters.CreationTime
+        //                     | NotifyFilters.DirectoryName
+        //                     | NotifyFilters.FileName
+        //                     | NotifyFilters.LastAccess
+        //                     | NotifyFilters.LastWrite
+        //                     | NotifyFilters.Security
+        //                     | NotifyFilters.Size;
 
-        watcher.Changed += OnChanged;
-        watcher.EnableRaisingEvents = true;
+        //watcher.Changed += OnChanged;
+        //watcher.EnableRaisingEvents = true;
 
-        Console.WriteLine("Reading Wireshark logs and publishing to MQTT...");
-        Console.ReadLine(); //why ReadLine needs to stay: https://stackoverflow.com/questions/16278783/filesystemwatcher-not-firing-events
+        //Console.WriteLine("Reading Wireshark logs and publishing to MQTT...");
+        //Console.ReadLine(); //why ReadLine needs to stay: https://stackoverflow.com/questions/16278783/filesystemwatcher-not-firing-events
+        #endregion
 
-        #region while(true)
+        #region old method of Ciros Start-Stopp-Automatik
         //while (true)
         //{
 
@@ -179,79 +179,102 @@ static class Program
         //    Thread.Sleep(3000);
         //}//end of while
         #endregion
-    }//end of static async Task
+    }//end of static async Task Main
 
 
     /// <summary>
-    /// Publishes Packet Data to MQTT
+    /// Wrapper method to allow OnPacketArrivalAsync to be async
+    /// see https://github.com/dotpcap/sharppcap/discussions/399#discussioncomment-2891449
     /// </summary>
-    private static void device_OnPacketArrival(object sender, PacketCapture e)
+    private static void OnPacketArrival(object sender, PacketCapture e)
     {
-        var rawPacket = e.GetPacket();
-        var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
-        PacketDotNet.IPv4Packet IPV4packet = (PacketDotNet.IPv4Packet)packet.PayloadPacket;
+        OnPacketArrivalAsync(sender, e.GetPacket());
+    }
+
+    /// <summary>
+    /// Publishes Packet Data asynchronously to MQTT
+    /// </summary>
+    private static async void OnPacketArrivalAsync(object sender, RawCapture e)
+    {
+        var packet = e.GetPacket();
+        //var rawPacket = e.GetPacket();
+        //var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
+
+        var IPV4packet = packet.Extract<PacketDotNet.IPv4Packet>();
         string Robot = "";
-        if (IPV4packet.SourceAddress.ToString() == "192.168.0.123")
-            Robot = "RV-3SDB";
-        else if (IPV4packet.SourceAddress.ToString() == "192.168.0.128")
-            Robot = "RH-6SDH5520";
+        if (IPV4packet != null)
+        {
+            if (IPV4packet.SourceAddress.ToString() == "192.168.0.123")
+                Robot = "RV-3SDB";
+            else if (IPV4packet.SourceAddress.ToString() == "192.168.0.128")
+                Robot = "RH-6SDH5520";
+        }
 
         var tcpPacket = packet.Extract<PacketDotNet.TcpPacket>();
         if (tcpPacket != null)
         {
+            #region testing
+            //for (int i = 0; i < 50; i++)
+            //    await Publish_Application_Message("testTopic", i.ToString() + ": " + tcpPacket.ToString());
+            //await Publish_Application_Message("testTopic", tcpPacket.ToString());
+            #endregion
+
+            //tcpPacket.PayloadData is a byte[]-Array. We need to convert it to a string
             string Payload = System.Text.Encoding.Default.GetString(tcpPacket.PayloadData);
             if (Payload.Contains("QoK"))
             {
                 int beginOfData = Payload.IndexOf("QoK") + "QoK".Length;
                 int endOfData = Payload.IndexOf(";;");
+                //if we can't find the delimiter ";;", set the endOfData to Payload.Lenght
                 if (endOfData == -1) endOfData = Payload.Length;
                 int lengthOfData = endOfData - beginOfData;
-                if (beginOfData < 0 || lengthOfData < 0) return;
+                if (lengthOfData < 1) return;
                 string Data = Payload.Substring(beginOfData, lengthOfData);
-                string[] data = Data.Split(";", StringSplitOptions.RemoveEmptyEntries);
+                string[] data = Data.Split(";");
                 for (int i = 0; i < data.Length - 1; i += 2)
-                    Publish_Application_Message(Robot + "/" + data[i], data[i + 1]);
+                    await Publish_Application_Message(Robot + "/" + data[i], data[i + 1]);
             }
         }
-    }
+    }//end of static async void OnPacketArrivalAsync
 
+    #region old method of processing Wireshark Logs
+    //private async static void OnChanged(object sender, FileSystemEventArgs e)
+    //{
+    //    //Console.WriteLine($"\nFile changed: {e.FullPath}");
+    //    try
+    //    {
+    //        FileStream logFileStream = new FileStream(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+    //        using StreamReader logFileReader = new StreamReader(logFileStream);
+    //        while (!logFileReader.EndOfStream)
+    //        {
+    //            string line = logFileReader.ReadLine();
+    //            if (line.Contains("QoK"))
+    //            {
+    //                int beginOfData = line.IndexOf("QoK") + "QoK".Length;
+    //                int endOfData = line.IndexOf(";;");
+    //                int lengthOfData = endOfData - beginOfData;
+    //                if (beginOfData < 0 || endOfData < 0 || lengthOfData < 0) break;
+    //                string Data = line.Substring(beginOfData, lengthOfData);
+    //                string[] data = Data.Split(";", StringSplitOptions.RemoveEmptyEntries);
+    //                for (int i = 0; i < data.Length - 1; i += 2)
+    //                    await Publish_Application_Message(data[i], data[i + 1]);
+    //            }
+    //        }
 
-    private async static void OnChanged(object sender, FileSystemEventArgs e)
-    {
-        //Console.WriteLine($"\nFile changed: {e.FullPath}");
-        try
-        {
-            FileStream logFileStream = new FileStream(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using StreamReader logFileReader = new StreamReader(logFileStream);
-            while (!logFileReader.EndOfStream)
-            {
-                string line = logFileReader.ReadLine();
-                if (line.Contains("QoK"))
-                {
-                    int beginOfData = line.IndexOf("QoK") + "QoK".Length;
-                    int endOfData = line.IndexOf(";;");
-                    int lengthOfData = endOfData - beginOfData;
-                    if (beginOfData < 0 || endOfData < 0 || lengthOfData < 0) break;
-                    string Data = line.Substring(beginOfData, lengthOfData);
-                    string[] data = Data.Split(";", StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < data.Length - 1; i += 2)
-                        await Publish_Application_Message(data[i], data[i + 1]);
-                }
-            }
+    //        // Clean up
+    //        logFileReader.Close();
+    //        logFileStream.Close();
+    //        Console.Beep();
+    //    }
+    //    catch (FileNotFoundException ex)
+    //    {
+    //        Console.WriteLine(ex.Message);
+    //        Console.WriteLine("No worries, I'll try to use the next file.");
+    //        Console.WriteLine(ex.StackTrace);
+    //    }
 
-            // Clean up
-            logFileReader.Close();
-            logFileStream.Close();
-            Console.Beep();
-        }
-        catch (FileNotFoundException ex)
-        {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine("No worries, I'll try to use the next file.");
-            Console.WriteLine(ex.StackTrace);
-        }
-        
-    }
+    //}
+    #endregion
 
     private static async Task Publish_Application_Message(string topic, string payload)
     {
