@@ -1,9 +1,9 @@
 # CIROS-file-to-MQTT-Publisher
 
-Student thesis in the 6th theoretical semester of my studies in electrical engineering - automation with Prof. Dr. Bozena Lamek-Creutz, DHBW
+Student thesis in the 6th theoretical semester of my studies in electrical engineering - automation with [Prof. Dr. Bozena Lamek-Creutz, DHBW](https://www.linkedin.com/in/dr-ing-bozena-lamek-creutz-943766105)
 
-This script interfaces with two Mitsubishi robots, an RV-3SDB an an RH-6SDH5520, that are part of a Festo modular production system located at DHBW Mannheim.
-It reads the robot data directly from TCP-packets and publishes the data to an MQTT-broker.
+This script interfaces with two Mitsubishi robots, an RV-3SDB an an RH-6SDH5520, that are part of a Festo modular production system located at [DHBW Mannheim](https://www.mannheim.dhbw.de/).
+It reads the robot data directly from TCP-packets using [SharpPcap](https://github.com/dotpcap/sharppcap) and publishes the data to an MQTT-broker using [MQTTnet](https://github.com/dotnet/MQTTnet).
 
 [Link to the documentation (German)](https://docs.google.com/document/d/1aoB_pFMlUvaGXtW5EZLKQ5L99xn3KzHSzCvQDiuA1Uk).
 
