@@ -7,6 +7,6 @@ It reads the robot data directly from TCP-packets using [SharpPcap](https://gith
 
 [Link to the documentation (German)](https://docs.google.com/document/d/1aoB_pFMlUvaGXtW5EZLKQ5L99xn3KzHSzCvQDiuA1Uk).
 
-Position data on the MQTT-broker
+Robots positions on the MQTT-broker visualized using [MQTT Explorer](https://mqtt-explorer.com). J1 is plotted over time, indicating that the robot performed a repeated motion with a break during that timeframe:
+
 ![MQTT Explorer MOVING NOT MOVING published positions](https://user-images.githubusercontent.com/70020564/172181235-3e573d67-2956-4d0b-a75e-a40fb8ceff73.PNG)
-[Link to MQTT Explorer, the software used to visualize the data](https://mqtt-explorer.com)
