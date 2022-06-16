@@ -1,4 +1,4 @@
-# CIROS-file-to-MQTT-Publisher
+# Mitubishi-robots-2-MQTT
 
 Student thesis in the 6th theoretical semester of my studies in electrical engineering - automation with [Prof. Dr. Bozena Lamek-Creutz, DHBW](https://www.linkedin.com/in/dr-ing-bozena-lamek-creutz-943766105)
 
