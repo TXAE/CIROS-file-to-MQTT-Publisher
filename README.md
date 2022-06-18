@@ -5,7 +5,7 @@
 This script interfaces with two Mitsubishi robots, an RV-3SDB an an RH-6SDH5520, that are part of a Festo modular production system located at [DHBW Mannheim](https://www.mannheim.dhbw.de/).
 It reads the robot data from TCP-packets using [SharpPcap](https://github.com/dotpcap/sharppcap) and publishes the data to an MQTT-broker using [MQTTnet](https://github.com/dotnet/MQTTnet).
 
-![image](https://user-images.githubusercontent.com/70020564/174441618-9c3be24f-4762-491e-bae2-b36b8ec43306.png)
+![image](https://user-images.githubusercontent.com/70020564/174442173-d7a7a733-fc2b-4d1a-a4e2-4b4ff1bfa8f1.png)
 
 Robot positions on the MQTT-broker visualized using [MQTT Explorer](https://mqtt-explorer.com). J1 is plotted over time, indicating that the robot performed a repeated motion with a break during that timeframe:
 
