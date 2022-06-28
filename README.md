@@ -1,8 +1,8 @@
 # Mitubishi-robots-2-MQTT
 
-[Student thesis (German)](https://docs.google.com/document/d/1aoB_pFMlUvaGXtW5EZLKQ5L99xn3KzHSzCvQDiuA1Uk) in the 6th theoretical semester of my studies in electrical engineering - automation with [Prof. Dr. Bozena Lamek-Creutz, DHBW](https://www.linkedin.com/in/dr-ing-bozena-lamek-creutz-943766105)
+[Student thesis (German)](https://docs.google.com/document/d/1aoB_pFMlUvaGXtW5EZLKQ5L99xn3KzHSzCvQDiuA1Uk) in the 6th theoretical semester of my studies in [electrical engineering - automation](https://www.mannheim.dhbw.de/dual-studieren/bachelor/technik/elektrotechnik/automation) with [Prof. Dr. Bozena Lamek-Creutz, DHBW Mannheim](https://www.linkedin.com/in/dr-ing-bozena-lamek-creutz-943766105)
 
-This script interfaces with two Mitsubishi robots, an RV-3SDB an an RH-6SDH5520, that are part of a Festo modular production system located at [DHBW Mannheim](https://www.mannheim.dhbw.de/).
+This script interfaces with two Mitsubishi robots, an RV-3SDB an an RH-6SDH5520, that are part of a [Festo modular production system (MPS)](https://www.festo.com/de/en/e/technical-education/learning-systems/factory-automation-and-industry-4-0/training-factories/mps-mechatronics-training-factories-id_31963) located at [DHBW Mannheim](https://www.mannheim.dhbw.de/).
 It reads the robot data from TCP-packets using [SharpPcap](https://github.com/dotpcap/sharppcap) and publishes the data to an MQTT-broker using [MQTTnet](https://github.com/dotnet/MQTTnet).
 
 ![image](https://user-images.githubusercontent.com/70020564/174442173-d7a7a733-fc2b-4d1a-a4e2-4b4ff1bfa8f1.png)
