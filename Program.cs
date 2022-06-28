@@ -45,11 +45,10 @@ static class Program
     private static async void OnPacketArrivalAsync(object sender, RawCapture e)
     {
         var packet = e.GetPacket();
-        //var rawPacket = e.GetPacket();
-        //var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
-
         var IPV4packet = packet.Extract<PacketDotNet.IPv4Packet>();
         string Robot = "";
+
+        //fix this hardcoded bs
         if (IPV4packet != null)
         {
             if (IPV4packet.SourceAddress.ToString() == "192.168.0.123")
